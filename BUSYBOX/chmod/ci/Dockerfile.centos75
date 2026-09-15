@@ -18,6 +18,6 @@ RUN printf '%s\n' \
         /etc/yum.repos.d/CentOS-Sources.repo /etc/yum.repos.d/CentOS-Vault.repo \
         /etc/yum.repos.d/CentOS-Media.repo /etc/yum.repos.d/CentOS-Debuginfo.repo \
         /etc/yum.repos.d/CentOS-x86_64-kernel.repo \
-  && yum -y install gcc-4.8.5-28.el7 make binutils glibc-devel glibc.i686 glibc-devel.i686 tar xz \
+  && yum -y install gcc-4.8.5-28.el7 make binutils glibc-devel glibc.i686 glibc-devel.i686 tar xz bzip2 \
   && yum clean all \
-  && rpm -q gcc | grep -q '^gcc-4.8.5-28.el7'
+  && rpm -q gcc | grep -qx 'gcc-4.8.5-28.el7.x86_64'

@@ -11,17 +11,19 @@ mkdir -p "$DL"
 
 wanted() { case " $WANT " in *" $1 "*) return 0 ;; esac; return 1; }
 WANT=$*
+SEEN=""
 
 get() {
     name=$1; shift
     wanted "$name" || return 0
+    SEEN="$SEEN $name"
     if [ -f "$DL/$name" ] && (cd "$DL" && grep " $name\$" "$CI/SHA256SUMS" | sha256sum -c --quiet - 2>/dev/null); then
         echo "fetch: $name ok (cached)"
         return 0
     fi
     for url in "$@"; do
         echo "fetch: $name <- $url"
-        if curl -fL --retry 3 --connect-timeout 20 -o "$DL/$name.part" "$url"; then
+        if curl -fL --retry 3 --connect-timeout 20 --speed-limit 10240 --speed-time 60 --max-time 1800 -o "$DL/$name.part" "$url"; then
             mv "$DL/$name.part" "$DL/$name"
             if (cd "$DL" && grep " $name\$" "$CI/SHA256SUMS" | sha256sum -c --quiet -); then
                 return 0
@@ -50,4 +52,7 @@ get aarch64--uclibc--stable-2020.08-1.tar.bz2 \
 get mips64el-linux-musl-gcc730.tar.bz2 \
     'https://github.com/ventoy/musl-cross-make/releases/download/latest/output.tar.bz2'
 
+for w in $WANT; do
+    case " $SEEN " in *" $w "*) ;; *) echo "fetch: unknown tarball name: $w" >&2; exit 1 ;; esac
+done
 echo "fetch: verified: $WANT"

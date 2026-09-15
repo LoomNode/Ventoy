@@ -1,9 +1,10 @@
 # Reproducible build for `vtchmod*`
 
 `vtchmod.c` is compiled five times by `../build.sh`, once per CPU Ventoy
-boots on. The scripts here rebuild all five with the same toolchains the
-committed binaries were built with, then `cmp` the result against the
-files in git. Every one is byte-identical.
+boots on, and the results are copied into the three `IMG/cpio_*` trees.
+The scripts here run that same `build.sh`, unmodified, inside a container
+that has the toolchains `DOC/BuildVentoyFromSource.txt` lists, then `cmp`
+all ten output files against the ones in git. Every one is byte-identical.
 
 | binary          | toolchain                                                        | smoke test in CI |
 |-----------------|------------------------------------------------------------------|------------------|
@@ -13,17 +14,25 @@ files in git. Every one is byte-identical.
 | vtchmodaa64     | Bootlin `aarch64--uclibc--stable-2020.08-1` (gcc 9.3.0)          | qemu-user-static |
 | vtchmodm64e     | `ventoy/musl-cross-make` release `output.tar.bz2` (gcc 7.3.0)    | qemu-user-static |
 
-These are the toolchains listed in `DOC/BuildVentoyFromSource.txt`. The
-only thing that matters for a hash match and is easy to get wrong:
-Debian/Ubuntu ship `dietlibc 0.34~cvs20160606`, a later CVS snapshot whose
-startup code differs. The fefe `dietlibc-0.34.tar.xz` release is required.
+## What is pinned, and why
 
-fefe.de no longer serves that tarball. `fetch.sh` falls back, in order, to
-Software Heritage (which stores it under the same SHA-256 pinned here),
-Fedora's source cache, and the Wayback Machine. The `ventoy/musl-cross-make`
-toolchain is a `latest` release tag. Everything is pinned by SHA-256 in
-`SHA256SUMS`, so if an upstream changes or goes away the build fails loudly
-rather than producing different bytes.
+- **CentOS 7.5.1804, gcc 4.8.5-28.** `DOC/BuildVentoyFromSource.txt` says
+  CentOS 7.8, but the `.comment` section of the committed x86 binaries
+  records `GCC: (GNU) 4.8.5 20150623 (Red Hat 4.8.5-28)`, which is the
+  7.5 build. 7.8 ships 4.8.5-39 and produces different bytes. The image is
+  pinned by digest and the Dockerfile checks the exact gcc package.
+- **dietlibc 0.34, the fefe release tarball.** Debian/Ubuntu ship
+  `0.34~cvs20160606`, a later CVS snapshot whose startup code differs; it
+  does not reproduce these bytes. It is installed with the repo's own
+  `DOC/installdietlibc.sh`.
+- **musl 1.2.1** built with that gcc into `/usr/local/musl`.
+- **The two cross toolchains** from the URLs in `DOC/BuildVentoyFromSource.txt`.
+- All four tarballs by SHA-256 in `SHA256SUMS`. fefe.de no longer serves
+  the dietlibc tarball; `fetch.sh` falls back, in order, to Software
+  Heritage (which stores it under the same SHA-256), Fedora's source
+  cache, and the Wayback Machine. The `ventoy/musl-cross-make` toolchain
+  is a `latest` release tag. If any upstream changes or goes away the
+  build fails loudly rather than producing different bytes.
 
 ## Run it
 
@@ -31,18 +40,9 @@ rather than producing different bytes.
 sh BUSYBOX/chmod/ci/run-all.sh
 ```
 
-or step by step, from the repository root:
-
-```sh
-CI=BUSYBOX/chmod/ci
-sh $CI/fetch.sh                     # download + verify the 4 tarballs into $CI/dl (or name a subset)
-docker build -t vtchmod-centos75 -f $CI/Dockerfile.centos75 $CI
-docker run --rm -v "$PWD:/src:ro" -v "$PWD/$CI/dl:/dl:ro" -v "$PWD/$CI/out:/out" \
-    vtchmod-centos75 bash /src/$CI/build-x86.sh
-docker run --rm -v "$PWD/$CI/out:/out" vtchmod-centos75 chown -R "$(id -u):$(id -g)" /out
-sh $CI/build-cross.sh               # aarch64 + mips64el, no container needed
-sh $CI/verify.sh                    # cmp against committed + the IMG/cpio_* copies, exit 1 on any mismatch
-sh $CI/test.sh                      # smoke tests; non-x86 need qemu-user-static, skipped otherwise
-```
-
-`.github/workflows/build-vtchmod.yml` runs exactly this.
+That is: `fetch.sh` (download + verify the tarballs into `ci/dl`),
+`docker build` of `Dockerfile.centos75`, `build.sh` inside the container
+(writes `ci/out/BUSYBOX/...` and `ci/out/IMG/...`), `verify.sh` (cmp all
+ten files, exit 1 on any mismatch), `test.sh` (smoke tests; the two non-x86
+binaries need `qemu-user-static` and are skipped without it).
+`.github/workflows/build-vtchmod.yml` runs the same steps.
