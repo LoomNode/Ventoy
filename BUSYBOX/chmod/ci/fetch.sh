@@ -35,9 +35,13 @@ get() {
     return 1
 }
 
-# fefe.de no longer serves the 0.34 release; the Wayback copy hashes identically.
+# fefe.de no longer serves the 0.34 release. Software Heritage keeps it
+# addressed by the same SHA-256 pinned in SHA256SUMS; Fedora's source cache
+# keeps it by SHA-512; the Wayback Machine has the original download.
 get dietlibc-0.34.tar.xz \
     'https://www.fefe.de/dietlibc/dietlibc-0.34.tar.xz' \
+    'https://archive.softwareheritage.org/api/1/content/sha256:7994ad5a63d00446da2e95da1f3f03355b272f096d7eb9830417ab14393b3ace/raw/' \
+    'https://src.fedoraproject.org/repo/pkgs/dietlibc/dietlibc-0.34.tar.xz/sha512/2b38528c0ccf50e426f587b6448fed997fab1147eecc9e1af2f3fb3efe3d8f3997656d8e66e7cf1045ceb1f602cef43456c62ba83ff494f9c9816721bdb4d6c6/dietlibc-0.34.tar.xz' \
     'https://web.archive.org/web/20160314123456id_/https://www.fefe.de/dietlibc/dietlibc-0.34.tar.xz'
 get musl-1.2.1.tar.gz \
     'https://musl.libc.org/releases/musl-1.2.1.tar.gz'
