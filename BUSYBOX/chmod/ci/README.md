@@ -18,6 +18,12 @@ only thing that matters for a hash match and is easy to get wrong:
 Debian/Ubuntu ship `dietlibc 0.34~cvs20160606`, a later CVS snapshot whose
 startup code differs. The fefe `dietlibc-0.34.tar.xz` release is required.
 
+Known fragility: fefe.de no longer serves that tarball and no distro
+mirror carries it, so `fetch.sh` falls back to the Wayback Machine. The
+`ventoy/musl-cross-make` toolchain is a `latest` release tag. Both are
+pinned by SHA-256 in `SHA256SUMS`, so if either upstream changes or goes
+away the build fails loudly rather than producing different bytes.
+
 ## Run it
 
 ```sh
