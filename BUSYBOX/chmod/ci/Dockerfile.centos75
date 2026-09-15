@@ -20,4 +20,4 @@ RUN printf '%s\n' \
         /etc/yum.repos.d/CentOS-x86_64-kernel.repo \
   && yum -y install gcc-4.8.5-28.el7 make binutils glibc-devel glibc.i686 glibc-devel.i686 tar xz \
   && yum clean all \
-  && rpm -q gcc | grep -q '^gcc-4.8.5-28.el7' 
+  && rpm -q gcc | grep -q '^gcc-4.8.5-28.el7'

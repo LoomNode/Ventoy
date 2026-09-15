@@ -22,10 +22,10 @@ jobs:
     name: vtchmod32 / vtchmod64 / vtchmod64_musl (CentOS 7.5, gcc 4.8.5-28)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Fetch dietlibc 0.34 and musl 1.2.1 (pinned SHA-256)
-        run: sh BUSYBOX/chmod/ci/fetch.sh
+        run: sh BUSYBOX/chmod/ci/fetch.sh dietlibc-0.34.tar.xz musl-1.2.1.tar.gz
 
       # actions/checkout needs a newer glibc than CentOS 7 has, so the
       # container is run explicitly instead of via `container:`.
@@ -48,7 +48,7 @@ jobs:
       - name: Smoke test
         run: sh BUSYBOX/chmod/ci/test.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vtchmod-x86
           path: BUSYBOX/chmod/ci/out/
@@ -58,10 +58,10 @@ jobs:
     name: vtchmodaa64 / vtchmodm64e (Bootlin uClibc 2020.08, musl-cross-make gcc 7.3.0)
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
 
       - name: Fetch cross toolchains (pinned SHA-256)
-        run: sh BUSYBOX/chmod/ci/fetch.sh
+        run: sh BUSYBOX/chmod/ci/fetch.sh aarch64--uclibc--stable-2020.08-1.tar.bz2 mips64el-linux-musl-gcc730.tar.bz2
 
       - name: Build
         run: sh BUSYBOX/chmod/ci/build-cross.sh
@@ -75,7 +75,7 @@ jobs:
           sudo apt-get install -y -qq qemu-user-static
           sh BUSYBOX/chmod/ci/test.sh
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: vtchmod-cross
           path: BUSYBOX/chmod/ci/out/
