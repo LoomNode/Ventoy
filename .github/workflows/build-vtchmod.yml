@@ -1,0 +1,82 @@
+# Rebuilds BUSYBOX/chmod/vtchmod* from vtchmod.c with the toolchains listed in
+# DOC/BuildVentoyFromSource.txt and fails unless every binary is byte-identical
+# to the one committed. See BUSYBOX/chmod/ci/README.md.
+name: build-vtchmod
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'BUSYBOX/chmod/**'
+      - '.github/workflows/build-vtchmod.yml'
+  push:
+    paths:
+      - 'BUSYBOX/chmod/**'
+      - '.github/workflows/build-vtchmod.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  x86-diet-musl:
+    name: vtchmod32 / vtchmod64 / vtchmod64_musl (CentOS 7.5, gcc 4.8.5-28)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch dietlibc 0.34 and musl 1.2.1 (pinned SHA-256)
+        run: sh BUSYBOX/chmod/ci/fetch.sh
+
+      # actions/checkout needs a newer glibc than CentOS 7 has, so the
+      # container is run explicitly instead of via `container:`.
+      - name: Build CentOS 7.5 image
+        run: docker build -t vtchmod-centos75 -f BUSYBOX/chmod/ci/Dockerfile.centos75 BUSYBOX/chmod/ci
+
+      - name: Build
+        run: |
+          mkdir -p BUSYBOX/chmod/ci/out
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/BUSYBOX/chmod/ci/dl:/dl:ro" \
+            -v "$PWD/BUSYBOX/chmod/ci/out:/out" \
+            vtchmod-centos75 bash /src/BUSYBOX/chmod/ci/build-x86.sh
+          docker run --rm -v "$PWD/BUSYBOX/chmod/ci/out:/out" vtchmod-centos75 chown -R "$(id -u):$(id -g)" /out
+
+      - name: Verify byte-identical to committed
+        run: sh BUSYBOX/chmod/ci/verify.sh vtchmod32 vtchmod64 vtchmod64_musl
+
+      - name: Smoke test
+        run: sh BUSYBOX/chmod/ci/test.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vtchmod-x86
+          path: BUSYBOX/chmod/ci/out/
+          if-no-files-found: error
+
+  cross-aarch64-mips64el:
+    name: vtchmodaa64 / vtchmodm64e (Bootlin uClibc 2020.08, musl-cross-make gcc 7.3.0)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Fetch cross toolchains (pinned SHA-256)
+        run: sh BUSYBOX/chmod/ci/fetch.sh
+
+      - name: Build
+        run: sh BUSYBOX/chmod/ci/build-cross.sh
+
+      - name: Verify byte-identical to committed
+        run: sh BUSYBOX/chmod/ci/verify.sh vtchmodaa64 vtchmodm64e
+
+      - name: Smoke test under qemu-user
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static
+          sh BUSYBOX/chmod/ci/test.sh
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: vtchmod-cross
+          path: BUSYBOX/chmod/ci/out/
+          if-no-files-found: error
