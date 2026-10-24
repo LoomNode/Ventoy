@@ -1,0 +1,74 @@
+# Runs xz-embedded's ventoy_makefile* (unmodified) inside a CentOS 7.5 container
+# with the toolchains listed in DOC/BuildVentoyFromSource.txt. Fails unless
+# xzminidec64, xzminidec64_musl, xzminidecaa64 and xzminidecm64e are
+# byte-identical to the committed ones. xzminidec32 is built and reported only.
+# See Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci/README.md.
+name: build-xzminidec
+
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - 'Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/**'
+      - 'IMG/cpio_x86/ventoy/busybox/xzminidec*'
+      - 'IMG/cpio_arm64/ventoy/busybox/xzminidec*'
+      - 'IMG/cpio_mips64/ventoy/busybox/xzminidec*'
+      - 'DOC/installdietlibc.sh'
+      - '.github/workflows/build-xzminidec.yml'
+  push:
+    paths:
+      - 'Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/**'
+      - 'IMG/cpio_x86/ventoy/busybox/xzminidec*'
+      - 'IMG/cpio_arm64/ventoy/busybox/xzminidec*'
+      - 'IMG/cpio_mips64/ventoy/busybox/xzminidec*'
+      - 'DOC/installdietlibc.sh'
+      - '.github/workflows/build-xzminidec.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: xzminidec32 / 64 / 64_musl / aa64 / m64e via ventoy_makefile*
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - name: Fetch toolchains (pinned SHA-256)
+        working-directory: Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci
+        run: sh fetch.sh
+
+      # actions/checkout needs a newer glibc than CentOS 7 has, so the
+      # container is run explicitly instead of via `container:`.
+      - name: Build CentOS 7.5 image
+        working-directory: Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci
+        run: docker build -t xz-centos75 -f Dockerfile.centos75 .
+
+      - name: Run ventoy_makefile* build in the container
+        run: |
+          CI=Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci
+          mkdir -p "$CI/out"
+          docker run --rm \
+            -v "$PWD:/src:ro" \
+            -v "$PWD/$CI/dl:/dl:ro" \
+            -v "$PWD/$CI/out:/out" \
+            -e SOURCE=legacy \
+            xz-centos75 bash "/src/$CI/build.sh"
+          docker run --rm -v "$PWD/$CI/out:/out" xz-centos75 chown -R "$(id -u):$(id -g)" /out
+
+      - name: Verify against committed binaries
+        working-directory: Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci
+        run: sh verify.sh
+
+      - name: Smoke test (qemu-user for aarch64/mips64el)
+        working-directory: Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq qemu-user-static
+          sh test.sh
+
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: xzminidec
+          path: Ventoy2Disk/Ventoy2Disk/xz-embedded-20130513/ci/out/
+          if-no-files-found: error
